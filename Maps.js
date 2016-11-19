@@ -12,14 +12,13 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 	$scope.contentString = "";
 	$scope.directionsDisplay = null;
 	$scope.directionsService = new google.maps.DirectionsService();
+	$scope.routes = {};
 	
-	$scope.first = null;
-	$scope.second = null;
+	$scope.primero = null;	
 	
 	$scope.markerForm = function(){
 		var name = $scope.actual;
 		$scope.tipos[name] = $scope.tipo;
-		console.log($scope.markers[name]);
 		$scope.markers[name].setIcon('Icons/'+$scope.tipo+'.png');
 		$scope.infowindow.close();
 	};
@@ -38,7 +37,7 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 			zoom: 15,
 		});
 		
-		$scope.directionsDisplay.setMap(map);
+		$scope.directionsDisplay.setMap($scope.map);
 		
 		var drawingManager = new google.maps.drawing.DrawingManager({
 			drawingMode: google.maps.drawing.OverlayType.CIRCLE,
@@ -81,7 +80,60 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 			event.overlay.addListener('dblclick', function(event) {
 				$scope.infowindow.close();
 				var name = JSON.stringify(marker.position);
-				alert('llega');
+				if( $scope.tipos[name] != null ){
+					if( $scope.primero == null ){
+						$scope.primero = name;
+					}else if( name != $scope.primero ){
+						var puede= true;
+						puede = ( ($scope.tipos[$scope.primero] == 'tipoProveedor' && $scope.tipos[name] == 'tipoPlanta') || ($scope.tipos[$scope.primero] == 'tipoPlanta' && $scope.tipos[name] == 'tipoProveedor')
+									|| ($scope.tipos[$scope.primero] == 'tipoPlanta' && $scope.tipos[name] == 'tipoDC') || ($scope.tipos[$scope.primero] == 'tipoDC' && $scope.tipos[name] == 'tipoPlanta')	
+									|| ($scope.tipos[$scope.primero] == 'tipoDC' && $scope.tipos[name] == 'tipoCliente') || ($scope.tipos[$scope.primero] == 'tipoCliente' && $scope.tipos[name] == 'tipoDC'))? true: false;
+						
+						if( puede ){
+							if( $scope.routes[$scope.primero+"to"+name] == null && $scope.routes[name+"to"+$scope.primero] == null  ){
+								var bounds = new google.maps.LatLngBounds();
+								bounds.extend($scope.markers[$scope.primero].position);
+								bounds.extend($scope.markers[name].position);
+								$scope.map.fitBounds(bounds);
+								var request = {
+									origin: $scope.markers[$scope.primero].position,
+									destination: $scope.markers[name].position,
+									travelMode: google.maps.TravelMode.DRIVING,
+									optimizeWaypoints: true,
+									unitSystem: google.maps.UnitSystem.METRIC
+								};
+								$scope.directionsService.route(request, function (response, status) {
+									if (status == google.maps.DirectionsStatus.OK) {
+										var totalDistance = 0;
+										var legs = response.routes[0].legs;
+										for(var i=0; i< legs.length; ++i) {
+											totalDistance += legs[i].distance.value;
+										}
+										$scope.directionsDisplay = new google.maps.DirectionsRenderer();
+										$scope.directionsDisplay.setDirections(response);
+										if( $scope.routes[$scope.primero] == null ) $scope.routes[$scope.primero] = [];
+										$scope.routes[ $scope.primero ].push([ name, response, totalDistance ]);
+										if( $scope.routes[name] == null ) $scope.routes[name] = [];
+										$scope.routes[ name ].push([ $scope.primero, response, totalDistance ]);
+										$scope.directionsDisplay.setMap($scope.map);
+										$scope.primero = null;
+									} else {
+										alert("Directions Request from " + start.toUrlValue(6) + " to " + end.toUrlValue(6) + " failed: " + status);
+									}
+								});
+								console.log($scope.routes);
+							}else{
+								alert( "Esa ruta ya existe" );
+								$scope.primero = null;
+							}
+						}else{
+							alert( "No es posible unir "+$scope.tipos[$scope.primero]+" con "+$scope.tipos[name] );
+							$scope.primero = null;
+						}
+					}
+				}else{
+					alert("No se ha definido la clase del sitio");
+				}
 			});
 			
 			event.overlay.addListener('click', function(event) {
@@ -102,7 +154,6 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 				}else{
 					$scope.actual = name;
 					$scope.tipo = $scope.tipos[name];
-					console.log($scope.tipo);
 					
 					var compiledContent = $compile($scope.contentString)($scope);
 		
