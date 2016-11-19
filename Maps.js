@@ -9,16 +9,22 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 	$scope.actual = null;
 	$scope.tipos = {};
 	$scope.tipo = null;
+	$scope.oferta = null;
+	$scope.costo = null;
+	$scope.demanda = null;
 	$scope.contentString = "";
 	$scope.directionsDisplay = null;
 	$scope.directionsService = new google.maps.DirectionsService();
 	$scope.routes = {};
+	$scope.area = "";
+	
 	
 	$scope.primero = null;	
 	
-	$scope.markerForm = function(){
+	$scope.markerTypeForm = function(){
 		var name = $scope.actual;
-		$scope.tipos[name] = $scope.tipo;
+		//if( $scope.tipos[name] == null ) $scope.tipos[name] = [];
+		$scope.tipos[name] = [$scope.tipo, $scope.oferta, $scope.costo, $scope.demanda];
 		$scope.markers[name].setIcon('Icons/'+$scope.tipo+'.png');
 		$scope.infowindow.close();
 	};
@@ -28,6 +34,79 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 		$scope.markers[name].setMap(null);
 		delete $scope.markers[name];
 	};
+	
+	$scope.send = function(){
+		console.log(JSON.stringify( $scope.routes ));
+		var tipoProveedor = 0;
+		var tipoPlanta = 0;
+		var tipoDC = 0;
+		var tipoCliente = 0;
+		var resp = {};
+		if( Object.keys($scope.tipos).length == 0 ){
+			alert( "No hay nodos definidos" );
+			return ;
+		}
+		for( var key in $scope.tipos ){
+			if( $scope.tipos[key][0] == 'tipoCliente' && $scope.tipos[key][3] == null  ){
+				alert( "Un nodo tipoCliente no posee demanda" );
+				return ;
+			}else if( $scope.tipos[key][0] != 'tipoCliente' && $scope.tipos[key][1] == null ){
+				alert( "Un nodo "+$scope.tipos[key][0]+" no posee oferta" );
+				return ;
+			}else if( $scope.tipos[key][0] != 'tipoCliente' && $scope.tipos[key][2] == null  ){
+				alert( "Un nodo "+$scope.tipos[key][0]+" no posee costo" );
+				return ;
+			}
+		}
+		
+		if( Object.keys($scope.routes).length == 0 ){
+			alert( "No hay rutas definidas" );
+			return ;
+		}
+		resp["nodos"] = {};
+		var names = {};
+		for( var key in $scope.tipos ){
+			var name = "";
+			if( $scope.tipos[key][0] == 'tipoCliente' ){
+				name = 'tipoCliente'+(tipoCliente+1);
+				tipoCliente++;
+				resp["nodos"][name] = [ 'tipoCliente', { "demanda": $scope.tipos[key][3] } ];
+			}else{
+				if( $scope.tipos[key][0] == 'tipoProveedor' ){
+					name = $scope.tipos[key][0]+(tipoProveedor+1);
+					tipoProveedor++;
+				}else if( $scope.tipos[key][0] == 'tipoPlanta' ){
+					name = $scope.tipos[key][0]+(tipoPlanta+1);
+					tipoPlanta++;
+				}else if( $scope.tipos[key][0] == 'tipoDC' ){
+					name = $scope.tipos[key][0]+(tipoDC+1);
+					tipoDC++;
+				}
+				resp["nodos"][name] = [ $scope.tipos[key][0], { "oferta": $scope.tipos[key][1], "costo": $scope.tipos[key][2] } ];
+			}
+			names[key] = name;
+		}
+		
+		resp["rutas"] = {};
+		for( var key in $scope.routes ){
+			if( resp["rutas"][ names[key] ] == null ) resp["rutas"][ names[key] ] = {};
+			for( var i = 0; i < $scope.routes[key].length; i++ ){
+				
+				if( !( names[$scope.routes[key][i][0]] in resp["rutas"][ names[key] ] )) 
+					resp["rutas"][ names[key] ][ names[$scope.routes[key][i][0]] ] = 1;
+				
+				if( resp["rutas"][ names[$scope.routes[key][i][0]] ] == null ) resp["rutas"][ names[$scope.routes[key][i][0]] ] = {};
+				
+				if( !( names[ key ] in resp["rutas"][ names[$scope.routes[key][i][0]] ] )) 
+					resp["rutas"][ names[$scope.routes[key][i][0]] ][ names[key] ] = 1;
+			}
+		}
+		$scope.area = JSON.stringify( resp );
+	}
+	
+	$scope.addNode = function( graph, node1, node2 ){
+		
+	}
 
 	$scope.initMap = function () {
 		$scope.directionsDisplay = new google.maps.DirectionsRenderer();
@@ -57,11 +136,14 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 								'<h1 id="firstHeading" class="firstHeading">Uluru</h1>'+
 								'<div id="bodyContent">'+
 									'<form onsubmit="return false">'+
-										'<input type="radio" ng-model="tipo" value="tipoProveedor">Proveedor'+
-										'<input type="radio" ng-model="tipo" value="tipoPlanta">Planta<br />'+
-										'<input type="radio" ng-model="tipo" value="tipoDC">Centro de distribución'+
-										'<input type="radio" ng-model="tipo" value="tipoCliente">Cliente<br />'+
-										'<button type="submit" ng-click="markerForm()">Guardar</button>'+
+										'<label><input type="radio" ng-model="tipo" value="tipoProveedor">Proveedor</label>'+
+										'<label><input type="radio" ng-model="tipo" value="tipoPlanta">Planta</label><br />'+
+										'<label><input type="radio" ng-model="tipo" value="tipoDC">Centro de distribución</label>'+
+										'<label><input type="radio" ng-model="tipo" value="tipoCliente">Cliente</label><br />'+
+										'<label>Oferta:<input type="text" ng-model="oferta" /></label><br />'+
+										'<label>Costo:<input type="text" ng-model="costo" /></label><br />'+
+										'<label>Demanda:<input type="text" ng-model="demanda" /></label><br />'+
+										'<button type="submit" ng-click="markerTypeForm()">Guardar</button>'+
 										'<button type="submit" ng-click="borrarMarker()">Borrar este punto</button>'+
 									'</form>'+
 								'</div>'+
@@ -80,15 +162,15 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 			event.overlay.addListener('dblclick', function(event) {
 				$scope.infowindow.close();
 				var name = JSON.stringify(marker.position);
-				if( $scope.tipos[name] != null ){
+				if( $scope.tipos[name][0] != null ){
 					if( $scope.primero == null ){
 						$scope.primero = name;
-						$scope.markers[$scope.primero].setIcon( "Icons/"+$scope.tipos[$scope.primero]+"Red.png" );
+						$scope.markers[$scope.primero].setIcon( "Icons/"+$scope.tipos[$scope.primero][0]+"Red.png" );
 					}else if( name != $scope.primero ){
 						var puede= true;
-						puede = ( ($scope.tipos[$scope.primero] == 'tipoProveedor' && $scope.tipos[name] == 'tipoPlanta') || ($scope.tipos[$scope.primero] == 'tipoPlanta' && $scope.tipos[name] == 'tipoProveedor')
-									|| ($scope.tipos[$scope.primero] == 'tipoPlanta' && $scope.tipos[name] == 'tipoDC') || ($scope.tipos[$scope.primero] == 'tipoDC' && $scope.tipos[name] == 'tipoPlanta')	
-									|| ($scope.tipos[$scope.primero] == 'tipoDC' && $scope.tipos[name] == 'tipoCliente') || ($scope.tipos[$scope.primero] == 'tipoCliente' && $scope.tipos[name] == 'tipoDC'))? true: false;
+						puede = ( ($scope.tipos[$scope.primero][0] == 'tipoProveedor' && $scope.tipos[name][0] == 'tipoPlanta') || ($scope.tipos[$scope.primero][0] == 'tipoPlanta' && $scope.tipos[name][0] == 'tipoProveedor')
+									|| ($scope.tipos[$scope.primero][0] == 'tipoPlanta' && $scope.tipos[name][0] == 'tipoDC') || ($scope.tipos[$scope.primero][0] == 'tipoDC' && $scope.tipos[name][0] == 'tipoPlanta')	
+									|| ($scope.tipos[$scope.primero][0] == 'tipoDC' && $scope.tipos[name][0] == 'tipoCliente') || ($scope.tipos[$scope.primero][0] == 'tipoCliente' && $scope.tipos[name][0] == 'tipoDC'))? true: false;
 						
 						if( puede ){
 							if( $scope.routes[$scope.primero+"to"+name] == null && $scope.routes[name+"to"+$scope.primero] == null  ){
@@ -113,25 +195,26 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 										$scope.directionsDisplay = new google.maps.DirectionsRenderer();
 										$scope.directionsDisplay.setDirections(response);
 										if( $scope.routes[$scope.primero] == null ) $scope.routes[$scope.primero] = [];
-										$scope.routes[ $scope.primero ].push([ name, response, totalDistance ]);
+										//$scope.routes[ $scope.primero ].push([ name, response, totalDistance ]);
+										$scope.routes[ $scope.primero ].push([ name, totalDistance ]);
 										if( $scope.routes[name] == null ) $scope.routes[name] = [];
-										$scope.routes[ name ].push([ $scope.primero, response, totalDistance ]);
+										//$scope.routes[ name ].push([ $scope.primero, response, totalDistance ]);
+										$scope.routes[ name ].push([ $scope.primero, totalDistance ]);
 										$scope.directionsDisplay.setMap($scope.map);
-										$scope.markers[$scope.primero].setIcon( "Icons/"+$scope.tipos[$scope.primero]+".png" );
+										$scope.markers[$scope.primero].setIcon( "Icons/"+$scope.tipos[$scope.primero][0]+".png" );
 										$scope.primero = null;
 									} else {
 										alert("Directions Request from " + start.toUrlValue(6) + " to " + end.toUrlValue(6) + " failed: " + status);
 									}
 								});
-								console.log($scope.routes);
 							}else{
 								alert( "Esa ruta ya existe" );
-								$scope.markers[$scope.primero].setIcon( "Icons/"+$scope.tipos[$scope.primero]+".png" );
+								$scope.markers[$scope.primero].setIcon( "Icons/"+$scope.tipos[$scope.primero][0]+".png" );
 								$scope.primero = null;
 							}
 						}else{
-							alert( "No es posible unir "+$scope.tipos[$scope.primero]+" con "+$scope.tipos[name] );
-							$scope.markers[$scope.primero].setIcon( "Icons/"+$scope.tipos[$scope.primero]+".png" );
+							alert( "No es posible unir "+$scope.tipos[$scope.primero][0]+" con "+$scope.tipos[name][0] );
+							$scope.markers[$scope.primero].setIcon( "Icons/"+$scope.tipos[$scope.primero][0]+".png" );
 							$scope.primero = null;
 						}
 					}
@@ -146,6 +229,9 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 				if( !( name in $scope.markers ) ){
 					$scope.markers[name] = marker;
 					$scope.tipo = null;
+					$scope.oferta = null;
+					$scope.costo = null;
+					$scope.demanda = null;
 					$scope.actual = name;
 
 					var compiledContent = $compile($scope.contentString)($scope);
@@ -157,8 +243,10 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 					$scope.infowindow.open($scope.map, this);
 				}else{
 					$scope.actual = name;
-					$scope.tipo = $scope.tipos[name];
-					
+					$scope.tipo = $scope.tipos[name][0];
+					$scope.oferta = $scope.tipos[name][1];
+					$scope.costo = $scope.tipos[name][2];
+					$scope.demanda = $scope.tipos[name][3];
 					var compiledContent = $compile($scope.contentString)($scope);
 		
 					$scope.infowindow = new google.maps.InfoWindow({
