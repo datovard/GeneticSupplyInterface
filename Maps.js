@@ -83,6 +83,7 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 				if( $scope.tipos[name] != null ){
 					if( $scope.primero == null ){
 						$scope.primero = name;
+						$scope.markers[$scope.primero].setIcon( "Icons/"+$scope.tipos[$scope.primero]+"Red.png" );
 					}else if( name != $scope.primero ){
 						var puede= true;
 						puede = ( ($scope.tipos[$scope.primero] == 'tipoProveedor' && $scope.tipos[name] == 'tipoPlanta') || ($scope.tipos[$scope.primero] == 'tipoPlanta' && $scope.tipos[name] == 'tipoProveedor')
@@ -116,6 +117,7 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 										if( $scope.routes[name] == null ) $scope.routes[name] = [];
 										$scope.routes[ name ].push([ $scope.primero, response, totalDistance ]);
 										$scope.directionsDisplay.setMap($scope.map);
+										$scope.markers[$scope.primero].setIcon( "Icons/"+$scope.tipos[$scope.primero]+".png" );
 										$scope.primero = null;
 									} else {
 										alert("Directions Request from " + start.toUrlValue(6) + " to " + end.toUrlValue(6) + " failed: " + status);
@@ -124,10 +126,12 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 								console.log($scope.routes);
 							}else{
 								alert( "Esa ruta ya existe" );
+								$scope.markers[$scope.primero].setIcon( "Icons/"+$scope.tipos[$scope.primero]+".png" );
 								$scope.primero = null;
 							}
 						}else{
 							alert( "No es posible unir "+$scope.tipos[$scope.primero]+" con "+$scope.tipos[name] );
+							$scope.markers[$scope.primero].setIcon( "Icons/"+$scope.tipos[$scope.primero]+".png" );
 							$scope.primero = null;
 						}
 					}
