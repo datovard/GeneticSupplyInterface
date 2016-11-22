@@ -40,23 +40,19 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 	
 	$scope.send = function(){
 		console.log(JSON.stringify( $scope.routes ));
-		var tipoProveedor = 0;
-		var tipoPlanta = 0;
-		var tipoDC = 0;
-		var tipoCliente = 0;
 		var resp = {};
 		if( Object.keys($scope.tipos).length == 0 ){
 			alert( "No hay nodos definidos" );
 			return ;
 		}
 		for( var key in $scope.tipos ){
-			if( $scope.tipos[key][0] == 'tipoCliente' && $scope.tipos[key][3] == null  ){
+			if( $scope.tipos[key][0] == '1' && $scope.tipos[key][3] == null  ){
 				alert( "Un nodo tipoCliente no posee demanda" );
 				return ;
-			}else if( $scope.tipos[key][0] != 'tipoCliente' && $scope.tipos[key][1] == null ){
+			}else if( $scope.tipos[key][0] != '1' && $scope.tipos[key][1] == null ){
 				alert( "Un nodo "+$scope.tipos[key][0]+" no posee oferta" );
 				return ;
-			}else if( $scope.tipos[key][0] != 'tipoCliente' && $scope.tipos[key][2] == null  ){
+			}else if( $scope.tipos[key][0] != '1' && $scope.tipos[key][2] == null  ){
 				alert( "Un nodo "+$scope.tipos[key][0]+" no posee costo" );
 				return ;
 			}
@@ -71,25 +67,10 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 		for( var key in $scope.tipos ){
 			var name = "";
 			name = $scope.tipos[key][4];
-			if( $scope.tipos[key][0] == 'tipoCliente' ){
-				//name = 'tipoCliente'+(tipoCliente+1);
-				tipoCliente++;
-				resp["nodos"][name] = [ 'tipoCliente', { "demanda": $scope.tipos[key][3] } ];
-			}else{
-				if( $scope.tipos[key][0] == 'tipoProveedor' ){
-					//name = $scope.tipos[key][0]+(tipoProveedor+1);
-					tipoProveedor++;
-				}else if( $scope.tipos[key][0] == 'tipoPlanta' ){
-					//name = $scope.tipos[key][0]+(tipoPlanta+1);
-					tipoPlanta++;
-				}else if( $scope.tipos[key][0] == 'tipoDC' ){
-					//name = $scope.tipos[key][0]+(tipoDC+1);
-					tipoDC++;
-				}
-				resp["nodos"][name] = [ $scope.tipos[key][0], { "oferta": $scope.tipos[key][1], "costo": $scope.tipos[key][2] } ];
-			}
-			name = $scope.tipos[key][4];
+			if( $scope.tipos[key][0] == '4' )   resp["nodos"][name] = { "tipo": $scope.tipos[key][0], "demanda": $scope.tipos[key][3] };
+			else   resp["nodos"][name] = { "tipo": $scope.tipos[key][0], "oferta": $scope.tipos[key][1], "costo": $scope.tipos[key][2] } ;
 			names[key] = name;
+			//$scope.tipos[key][0],
 		}
 		
 		resp["rutas"] = {};
@@ -98,12 +79,12 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 			for( var i = 0; i < $scope.routes[key].length; i++ ){
 				
 				if( !( names[$scope.routes[key][i][0]] in resp["rutas"][ names[key] ] )) 
-					resp["rutas"][ names[key] ][ names[$scope.routes[key][i][0]] ] = 1;
+					resp["rutas"][ names[key] ][ names[$scope.routes[key][i][0]] ] = $scope.routes[key][i][1];
 				
 				if( resp["rutas"][ names[$scope.routes[key][i][0]] ] == null ) resp["rutas"][ names[$scope.routes[key][i][0]] ] = {};
 				
 				if( !( names[ key ] in resp["rutas"][ names[$scope.routes[key][i][0]] ] )) 
-					resp["rutas"][ names[$scope.routes[key][i][0]] ][ names[key] ] = 1;
+					resp["rutas"][ names[$scope.routes[key][i][0]] ][ names[key] ] = $scope.routes[key][i][1];
 			}
 		}
 		$scope.area = JSON.stringify( resp );
@@ -141,21 +122,21 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 								'<div id="bodyContent" class="form-group">'+
 									'<form onsubmit="return false">'+
 										'<div class="form-group bottom"><label for="nombre">Nombre:</label> <input type="text" class="form-control" ng-model="nombre" id="nombre"></div>'+
-										'<div class="bottom"><div class="radio"><label class="radio-inline"><input type="radio" ng-model="tipo" ng-disabled="nombre==null" name="tipo" value="tipoProveedor">Proveedor</label></div>'+
-										'<div class="radio"><label class="radio-inline"><input type="radio" ng-model="tipo" name="tipo" ng-disabled="nombre==null" value="tipoPlanta">Planta</label></div>'+
-										'<div class="radio"><label class="radio-inline"><input type="radio" ng-model="tipo" name="tipo" ng-disabled="nombre==null" value="tipoDC">Centro de distribución</label></div>'+
-										'<div class="radio"><label class="radio-inline"><input type="radio" ng-model="tipo" name="tipo" ng-disabled="nombre==null" value="tipoCliente">Cliente</label></div></div>'+
+										'<div class="bottom"><div class="radio"><label class="radio-inline"><input type="radio" ng-model="tipo" ng-disabled="nombre==null" name="tipo" value="4">Proveedor</label></div>'+
+										'<div class="radio"><label class="radio-inline"><input type="radio" ng-model="tipo" name="tipo" ng-disabled="nombre==null" value="3">Planta</label></div>'+
+										'<div class="radio"><label class="radio-inline"><input type="radio" ng-model="tipo" name="tipo" ng-disabled="nombre==null" value="2">Centro de distribución</label></div>'+
+										'<div class="radio"><label class="radio-inline"><input type="radio" ng-model="tipo" name="tipo" ng-disabled="nombre==null" value="1">Cliente</label></div></div>'+
 										'<div class="bottom"><div class="input-group">'+
 											'<span class="input-group-addon"><i class="glyphicon glyphicon-usd"></i></span>'+
-											'<input id="oferta" type="text" class="form-control" ng-model="oferta" ng-disabled="tipo==null || tipo==\'tipoCliente\'" name="oferta" placeholder="Oferta">'+
+											'<input id="oferta" type="text" class="form-control" ng-model="oferta" ng-disabled="tipo==null || tipo==\'1\'" name="oferta" placeholder="Oferta">'+
 										'</div>'+
 										'<div class="input-group">'+
 											'<span class="input-group-addon"><i class="glyphicon glyphicon-usd"></i></span>'+
-											'<input id="costo" type="text" class="form-control" ng-model="costo" ng-disabled="tipo==null || tipo==\'tipoCliente\'" name="costo" placeholder="Costo">'+
+											'<input id="costo" type="text" class="form-control" ng-model="costo" ng-disabled="tipo==null || tipo==\'1\'" name="costo" placeholder="Costo">'+
 										'</div>'+
 										'<div class="input-group">'+
 											'<span class="input-group-addon"><i class="glyphicon glyphicon-usd"></i></span>'+
-											'<input id="demanda" type="text" class="form-control" ng-model="demanda" ng-disabled="tipo==null || tipo!=\'tipoCliente\'" name="demanda" placeholder="Demanda">'+
+											'<input id="demanda" type="text" class="form-control" ng-model="demanda" ng-disabled="tipo==null || tipo!=\'1\'" name="demanda" placeholder="Demanda">'+
 										'</div></div>'+
 										'<button type="submit" ng-click="markerTypeForm()">Guardar</button>'+
 										'<button type="submit" ng-click="borrarMarker()">Borrar este punto</button>'+
@@ -182,9 +163,10 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 						$scope.markers[$scope.primero].setIcon( "icons/"+$scope.tipos[$scope.primero][0]+"Red.png" );
 					}else if( name != $scope.primero ){
 						var puede= true;
-						puede = ( ($scope.tipos[$scope.primero][0] == 'tipoProveedor' && $scope.tipos[name][0] == 'tipoPlanta') || ($scope.tipos[$scope.primero][0] == 'tipoPlanta' && $scope.tipos[name][0] == 'tipoProveedor')
-									|| ($scope.tipos[$scope.primero][0] == 'tipoPlanta' && $scope.tipos[name][0] == 'tipoDC') || ($scope.tipos[$scope.primero][0] == 'tipoDC' && $scope.tipos[name][0] == 'tipoPlanta')	
-									|| ($scope.tipos[$scope.primero][0] == 'tipoDC' && $scope.tipos[name][0] == 'tipoCliente') || ($scope.tipos[$scope.primero][0] == 'tipoCliente' && $scope.tipos[name][0] == 'tipoDC'))? true: false;
+						// proveedor : 4, planta : 3, dc: 2, cliente: 1  tipoCliente
+						puede = ( ($scope.tipos[$scope.primero][0] == '4' && $scope.tipos[name][0] == '3') || ($scope.tipos[$scope.primero][0] == '3' && $scope.tipos[name][0] == '4')
+									|| ($scope.tipos[$scope.primero][0] == '3' && $scope.tipos[name][0] == '2') || ($scope.tipos[$scope.primero][0] == '2' && $scope.tipos[name][0] == '3')	
+									|| ($scope.tipos[$scope.primero][0] == '2' && $scope.tipos[name][0] == '1') || ($scope.tipos[$scope.primero][0] == '1' && $scope.tipos[name][0] == '2'))? true: false;
 						
 						if( puede ){
 							if( $scope.routes[$scope.primero+"to"+name] == null && $scope.routes[name+"to"+$scope.primero] == null  ){
@@ -209,10 +191,8 @@ app.controller('MapNavigator', [ '$scope', '$compile', '$http', function( $scope
 										$scope.directionsDisplay = new google.maps.DirectionsRenderer();
 										$scope.directionsDisplay.setDirections(response);
 										if( $scope.routes[$scope.primero] == null ) $scope.routes[$scope.primero] = [];
-										//$scope.routes[ $scope.primero ].push([ name, response, totalDistance ]);
 										$scope.routes[ $scope.primero ].push([ name, totalDistance ]);
 										if( $scope.routes[name] == null ) $scope.routes[name] = [];
-										//$scope.routes[ name ].push([ $scope.primero, response, totalDistance ]);
 										$scope.routes[ name ].push([ $scope.primero, totalDistance ]);
 										$scope.directionsDisplay.setMap($scope.map);
 										$scope.markers[$scope.primero].setIcon( "icons/"+$scope.tipos[$scope.primero][0]+".png" );
